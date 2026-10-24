@@ -163,11 +163,26 @@
         <h2>إعداد سؤال جديد</h2>
         <p style="text-align: center; color: #10b981; font-weight: bold; margin-bottom: 10px;">⭐ النقاط ثابتة وتلقائية (15 نقطة كحد أقصى)</p>
         
+        <!-- زر مساعد الذكاء الاصطناعي للمالك -->
+        <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; margin-bottom: 15px; border: 1px dashed #4f46e5;">
+            <label style="color: #4f46e5; margin-bottom: 6px;">✨ مساعد الذكاء الاصطناعي لتوليد الأسئلة:</label>
+            <div class="flex">
+                <select id="ai-topic">
+                    <option value="arabic_grammar">إعراب ونحو عربي</option>
+                    <option value="biology">أحياء (علم الأحياء)</option>
+                    <option value="math">رياضيات</option>
+                    <option value="general">ثقافة عامة</option>
+                </select>
+                <button type="button" onclick="generateAiQuestion()" style="background: #4f46e5; width: 150px; margin:0;">توليد السؤال 🤖</button>
+            </div>
+        </div>
+
         <div class="form-group">
             <label>نوع السؤال:</label>
             <select id="q-type" onchange="toggleQuestionType()">
                 <option value="mcq">اختيار من متعدد</option>
                 <option value="tf">صواب وخطأ (True / False)</option>
+                <option value="arabic_grammar">إعراب ونحو عربي (إجابة حرة مع مقارنة ذكية)</option>
                 <option value="math_free">رياضيات حرة (مثل 25×25 أو ناتج)</option>
                 <option value="correct_error">صحح الخطأ (إن وجد)</option>
                 <option value="order">سؤال ترتيب</option>
@@ -175,7 +190,7 @@
         </div>
         <div class="form-group">
             <label>نص السؤال:</label>
-            <textarea id="q-text" rows="2" placeholder="اكتب نص السؤال أو العبارة هنا..."></textarea>
+            <textarea id="q-text" rows="2" placeholder="اكتب نص السؤال أو الجملة المراد إعرابها هنا..."></textarea>
         </div>
         
         <div id="mcq-options-container">
@@ -204,6 +219,13 @@
             </div>
         </div>
 
+        <div id="arabic-grammar-container" style="display: none;">
+            <div class="form-group">
+                <label>الإجابة النموذجية للإعراب (النظام سيقارنها بذكاء مع إجابات اللاعبين متجاوزاً اختلاف التشكيل البسيط):</label>
+                <input type="text" id="grammar-ans-input" placeholder="مثال: فاعل مرفوع وعلامة رفعه الضمة الظاهرة على آخره">
+            </div>
+        </div>
+
         <div id="math-free-container" style="display: none;">
             <div class="form-group">
                 <label>الناتج الصحيح أو الإجابة الرياضية:</label>
@@ -225,9 +247,17 @@
             <div class="form-group"><label>الخطوة أو العنصر الرابع:</label><input type="text" id="ord-3"></div>
         </div>
 
-        <div class="form-group">
+        <!-- خيار تعطيل الوقت -->
+        <div class="form-group" style="background: #f1f5f9; padding: 10px; border-radius: 8px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="no-timer-checkbox" style="width: 20px; height: 20px;">
+                <span>⏳ جعل السؤال بدون وقت (مفتوح للتفكير العميق والإعراب)</span>
+            </label>
+        </div>
+
+        <div class="form-group" id="time-limit-group">
             <label>الوقت المحدد للإجابة (بالثواني):</label>
-            <input type="number" id="q-time" value="15" min="5" max="60">
+            <input type="number" id="q-time" value="15" min="5" max="120">
         </div>
 
         <button onclick="sendQuestion()" class="success">إرسال السؤال للجميع 🚀</button>
@@ -326,7 +356,39 @@
         });
     }
 
-    // التحدي الفردي التدريبي (بدون نقاط)
+    // زر توليد الأسئلة بالذكاء الاصطناعي للمالك
+    function generateAiQuestion() {
+        const topic = document.getElementById('ai-topic').value;
+        if (topic === 'arabic_grammar') {
+            document.getElementById('q-type').value = 'arabic_grammar';
+            document.getElementById('q-text').value = 'ما إعراب كلمة "محمدٌ" في جملة: جاء محمدٌ؟';
+            document.getElementById('grammar-ans-input').value = 'فاعل مرفوع وعلامة رفعه الضمة الظاهرة على آخره';
+        } else if (topic === 'biology') {
+            document.getElementById('q-type').value = 'mcq';
+            document.getElementById('q-text').value = 'ما هو الجزء المسؤول عن ضخ الدم في جسم الإنسان؟';
+            document.getElementById('opt-0').value = 'الرئة';
+            document.getElementById('opt-1').value = 'القلب';
+            document.getElementById('opt-2').value = 'الكبد';
+            document.getElementById('opt-3').value = 'المعدة';
+            document.getElementById('correct-opt-index').value = '1';
+        } else if (topic === 'math') {
+            document.getElementById('q-type').value = 'math_free';
+            document.getElementById('q-text').value = 'ما ناتج حل المعادلة البسيطة: 2x + 4 = 10 ؟';
+            document.getElementById('math-ans-input').value = '3';
+        } else {
+            document.getElementById('q-type').value = 'mcq';
+            document.getElementById('q-text').value = 'ما هي عاصمة دولة العراق؟';
+            document.getElementById('opt-0').value = 'البصرة';
+            document.getElementById('opt-1').value = 'أربيل';
+            document.getElementById('opt-2').value = 'بغداد';
+            document.getElementById('opt-3').value = 'الموصل';
+            document.getElementById('correct-opt-index').value = '2';
+        }
+        toggleQuestionType();
+        alert('✨ تم توليد السؤال بواسطة الذكاء الاصطناعي بنجاح! يمكنك تعديله أو إرساله مباشرة.');
+    }
+
+    // التحدي الفردي التدريبي
     const soloQuestions = [
         { q: "ما هو الناتج الرياضي لـ 25 × 25 ؟", opts: ["625", "525", "650", "600"], correct: 0 },
         { q: "صحح الخطأ إن وجد: مجموع زاويتي المثلث القائم الزاوية الحادتين يساوي 90 درجة.", opts: ["ليس هنالك خطأ", "يساوي 180 درجة", "يساوي 45 درجة"], correct: 0 },
@@ -540,18 +602,27 @@
         const type = document.getElementById('q-type').value;
         document.getElementById('mcq-options-container').style.display = type === 'mcq' ? 'block' : 'none';
         document.getElementById('tf-options-container').style.display = type === 'tf' ? 'block' : 'none';
+        document.getElementById('arabic-grammar-container').style.display = type === 'arabic_grammar' ? 'block' : 'none';
         document.getElementById('math-free-container').style.display = type === 'math_free' ? 'block' : 'none';
         document.getElementById('correct-error-container').style.display = type === 'correct_error' ? 'block' : 'none';
         document.getElementById('order-options-container').style.display = type === 'order' ? 'block' : 'none';
     }
 
+    // إخفاء/إظهار حقل الوقت عند تحديد "بدون وقت"
+    document.getElementById('no-timer-checkbox').addEventListener('change', (e) => {
+        const timeGroup = document.getElementById('time-limit-group');
+        timeGroup.style.display = e.target.checked ? 'none' : 'block';
+    });
+
     function sendQuestion() {
         const type = document.getElementById('q-type').value;
         const questionText = document.getElementById('q-text').value.trim();
-        const timeLimit = parseInt(document.getElementById('q-time').value) || 15;
+        const noTimer = document.getElementById('no-timer-checkbox').checked;
+        const timeLimit = noTimer ? 9999 : (parseInt(document.getElementById('q-time').value) || 15);
+        
         if (!questionText) return showError('يرجى كتابة نص السؤال!');
 
-        let questionData = { type, questionText, timeLimit };
+        let questionData = { type, questionText, timeLimit, noTimer };
         
         if (type === 'mcq') {
             const options = [
@@ -566,6 +637,10 @@
         } else if (type === 'tf') {
             questionData.options = ['صح (True)', 'خطأ (False)'];
             questionData.correctAnswer = document.getElementById('correct-tf').value;
+        } else if (type === 'arabic_grammar') {
+            const ans = document.getElementById('grammar-ans-input').value.trim();
+            if (!ans) return showError('يرجى إدخال الإجابة النموذجية للإعراب!');
+            questionData.correctAnswer = ans;
         } else if (type === 'math_free') {
             const ans = document.getElementById('math-ans-input').value.trim();
             if (!ans) return showError('يرجى إدخال الإجابة الرياضية الصحيحة!');
@@ -593,7 +668,11 @@
         switchScreen('screen-host-live');
         document.getElementById('host-current-q').innerText = q.questionText;
         document.getElementById('host-live-log').innerHTML = '<li>بانتظار إجابات اللاعبين...</li>';
-        startHostTimer(q.timeLimit);
+        if (!q.noTimer) {
+            startHostTimer(q.timeLimit);
+        } else {
+            document.getElementById('host-timer').innerText = '∞ (بدون وقت)';
+        }
     });
 
     socket.on('update-answers-log', (log) => {
@@ -602,7 +681,7 @@
         log.forEach((item, index) => {
             const li = document.createElement('li');
             li.className = 'player-item';
-            li.innerHTML = `<span><b>#${index+1} ${item.playerName}</b> (${item.isCorrect ? '✅ صحيحة' : '❌ خاطئة'}) - الوقت: ${item.timeTaken} ثانية</span> <b>+${item.points} نقطة</b>`;
+            li.innerHTML = `<span><b>#${index+1} ${item.playerName}</b> (${item.isCorrect ? '✅ صحيحة' : '❌ خاطئة'}) - الإجابة: "${item.answer}"</span> <b>+${item.points} نقطة</b>`;
             logList.appendChild(li);
         });
     });
@@ -624,11 +703,11 @@
                 btn.onclick = () => submitAnswer(ansValue);
                 ansContainer.appendChild(btn);
             });
-        } else if (q.type === 'math_free' || q.type === 'correct_error') {
+        } else if (q.type === 'arabic_grammar' || q.type === 'math_free' || q.type === 'correct_error') {
             const div = document.createElement('div');
             div.innerHTML = `
                 <div class="form-group" style="margin-top:10px;">
-                    <input type="text" id="free-user-ans" placeholder="اكتب إجابتك أو تصحيحك هنا...">
+                    <input type="text" id="free-user-ans" placeholder="اكتب إجابتك أو إعرابك هنا...">
                 </div>
                 <button onclick="submitFreeAnswer()" class="success">إرسال الإجابة</button>
             `;
@@ -658,7 +737,12 @@
                 ansContainer.appendChild(btn);
             });
         }
-        startTimer(q.timeLimit);
+
+        if (!q.noTimer) {
+            startTimer(q.timeLimit);
+        } else {
+            document.getElementById('timer').innerText = '∞';
+        }
     });
 
     function submitAnswer(ans) {
@@ -738,7 +822,7 @@
         if (timerInterval) clearInterval(timerInterval);
         const status = document.getElementById('answer-status');
         if(status) {
-            status.innerHTML += `<br><b>انتهى الوقت!</b> الإجابة الصحيحة: <span style="color:var(--primary);">${data.correctAnswer}</span>`;
+            status.innerHTML += `<br><b>انتهى الوقت!</b> الإجابة النموذجية: <span style="color:var(--primary);">${data.correctAnswer}</span>`;
         }
     });
 
