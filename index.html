@@ -356,7 +356,6 @@
         });
     }
 
-    // زر توليد الأسئلة بالذكاء الاصطناعي للمالك
     function generateAiQuestion() {
         const topic = document.getElementById('ai-topic').value;
         if (topic === 'arabic_grammar') {
@@ -388,7 +387,6 @@
         alert('✨ تم توليد السؤال بواسطة الذكاء الاصطناعي بنجاح! يمكنك تعديله أو إرساله مباشرة.');
     }
 
-    // التحدي الفردي التدريبي
     const soloQuestions = [
         { q: "ما هو الناتج الرياضي لـ 25 × 25 ؟", opts: ["625", "525", "650", "600"], correct: 0 },
         { q: "صحح الخطأ إن وجد: مجموع زاويتي المثلث القائم الزاوية الحادتين يساوي 90 درجة.", opts: ["ليس هنالك خطأ", "يساوي 180 درجة", "يساوي 45 درجة"], correct: 0 },
@@ -608,7 +606,6 @@
         document.getElementById('order-options-container').style.display = type === 'order' ? 'block' : 'none';
     }
 
-    // إخفاء/إظهار حقل الوقت عند تحديد "بدون وقت"
     document.getElementById('no-timer-checkbox').addEventListener('change', (e) => {
         const timeGroup = document.getElementById('time-limit-group');
         timeGroup.style.display = e.target.checked ? 'none' : 'block';
