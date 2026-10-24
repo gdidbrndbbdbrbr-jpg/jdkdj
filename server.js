@@ -1,3 +1,4 @@
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -15,52 +16,6 @@ const badWords = ['حمار', 'كلب', 'قندرة', 'تفلش', 'سخيف', '�
 function containsBadWord(text) {
     if (!text) return false;
     return badWords.some(word => text.toLowerCase().includes(word));
-}
-
-// دالة المقارنة الذكية لتجاوز التشكيل والاختلافات البسيطة في الإعراب والصياغة
-function normalizeArabicText(text) {
-    if (!text) return "";
-    return text
-        .toString()
-        .trim()
-        .replace(/[\u064B-\u0652]/g, "") // إزالة التشكيل (التنوين، الفتحة، الضمة، الكسرة، السكون)
-        .replace(/[إأآا]/g, "ا") // توحيد الألفات
-        .replace(/ة/g, "ه") // توحيد التاء المربوطة والهاء
-        .replace(/ى/g, "ي") // توحيد الياء والألف المقصورة
-        .replace(/\s+/g, " "); // توحيد المسافات
-}
-
-function checkSmartAnswer(playerAnswer, modelAnswer, qType) {
-    if (!playerAnswer || !modelAnswer) return false;
-    
-    if (qType === 'arabic_grammar' || qType === 'correct_error' || qType === 'math_free') {
-        const normPlayer = normalizeArabicText(playerAnswer);
-        const normModel = normalizeArabicText(modelAnswer);
-
-        if (normPlayer === normModel) return true;
-
-        // مقارنة الكلمات المفتاحية للإعراب الطويل
-        const modelWords = normModel.split(" ").filter(w => w.length > 2);
-        const playerWords = normPlayer.split(" ");
-        
-        let matchedCount = 0;
-        for (let word of modelWords) {
-            if (playerWords.includes(word)) {
-                matchedCount++;
-            }
-        }
-
-        // إذا تطابق 60% أو أكثر من الكلمات الأساسية للإعراب، تحسب صحيحة
-        if (modelWords.length > 0 && (matchedCount / modelWords.length) >= 0.6) {
-            return true;
-        }
-        return false;
-    } else {
-        // مطابقة عادية للحالات الأخرى
-        const cleanAns = String(playerAnswer).trim().toLowerCase();
-        const cleanCorrect = String(modelAnswer).trim().toLowerCase();
-        return cleanAns === cleanCorrect || cleanAns.replace(/\s+/g, '') === cleanCorrect.replace(/\s+/g, '');
-    }
 }
 
 io.on('connection', (socket) => {
@@ -133,6 +88,7 @@ io.on('connection', (socket) => {
         socket.emit('joined-success', room);
     });
 
+    // استعادة الغرفة إذا كان المضيف هو نفسه
     socket.on('restore-host-room', ({ roomCode, hostName }) => {
         const room = rooms[roomCode];
         if (room && room.hostName === hostName) {
@@ -151,6 +107,7 @@ io.on('connection', (socket) => {
 
         room.gameState = 'question';
         room.answersLog = [];
+        // النقاط ثابتة حصراً 15 كحد أقصى
         questionData.points = 15;
 
         room.currentQuestion = {
@@ -162,20 +119,16 @@ io.on('connection', (socket) => {
             type: questionData.type,
             questionText: questionData.questionText,
             options: questionData.options || [],
-            timeLimit: questionData.timeLimit || 15,
-            noTimer: questionData.noTimer || false
+            timeLimit: questionData.timeLimit || 15
         };
 
         io.to(roomCode).emit('new-question', sanitizedQuestion);
         io.to(room.hostId).emit('host-question-started', questionData);
 
         if (room.timer) clearTimeout(room.timer);
-        
-        if (!questionData.noTimer) {
-            room.timer = setTimeout(() => {
-                triggerTimeUp(roomCode);
-            }, (questionData.timeLimit || 15) * 1000);
-        }
+        room.timer = setTimeout(() => {
+            triggerTimeUp(roomCode);
+        }, (questionData.timeLimit || 15) * 1000);
     });
 
     socket.on('force-end-question', ({ roomCode }) => {
@@ -204,18 +157,20 @@ io.on('connection', (socket) => {
         const q = room.currentQuestion;
         let isCorrect = false;
 
+        const cleanAns = String(answer).trim().toLowerCase();
+        const cleanCorrect = String(q.correctAnswer).trim().toLowerCase();
+
         if (q.type === 'mcq' || q.type === 'tf') {
-            const cleanAns = String(answer).trim().toLowerCase();
-            const cleanCorrect = String(q.correctAnswer).trim().toLowerCase();
             isCorrect = cleanAns === cleanCorrect;
         } else if (q.type === 'order') {
             isCorrect = JSON.stringify(answer) === JSON.stringify(q.correctAnswer);
-        } else {
-            isCorrect = checkSmartAnswer(answer, q.correctAnswer, q.type);
+        } else if (q.type === 'correct_error' || q.type === 'math_free') {
+            // مطابقة الإجابة الرياضية أو النصية مع تصحيح الخطأ
+            isCorrect = cleanAns === cleanCorrect || cleanAns.replace(/\s+/g, '') === cleanCorrect.replace(/\s+/g, '');
         }
 
         const timeTaken = ((Date.now() - q.startTime) / 1000).toFixed(2);
-        const pointsAwarded = isCorrect ? 15 : 0;
+        const pointsAwarded = isCorrect ? 15 : 0; // النقاط ثابتة 15
 
         if (isCorrect) {
             player.score += pointsAwarded;
@@ -289,6 +244,7 @@ io.on('connection', (socket) => {
             const playerIndex = room.players.findIndex(p => p.id === socket.id);
             if (playerIndex !== -1) {
                 if (room.hostId === socket.id) {
+                    // المضيف خرج، لا نحذف الغرفة فوراً بل نتركها 5 دقائق لكي يستطيع استعادتها
                     room.hostId = null;
                 } else {
                     room.players.splice(playerIndex, 1);
