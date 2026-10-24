@@ -1,0 +1,13 @@
+{
+  "name": "quiz-online-game",
+  "version": "1.0.0",
+  "description": "Interactive Multiplayer Quiz Game for all subjects",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
