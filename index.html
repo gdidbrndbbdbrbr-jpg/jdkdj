@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة المسابقات الذكية التفاعلية</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 700px; background: var(--card-bg); padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); position: relative; overflow: hidden; }
+        h1, h2, h3 { text-align: center; margin-bottom: 20px; color: var(--primary); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; outline: none; transition: 0.3s; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button:hover { background: var(--primary-hover); }
+        button.danger { background: var(--danger); }
+        button.success { background: var(--success); }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .flex { display: flex; gap: 10px; }
+        .player-list, .scoreboard-list, .chat-box, .public-rooms-list, .history-list { list-style: none; margin-top: 15px; max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #fff; }
+        .player-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+        .timer-box { font-size: 24px; font-weight: bold; text-align: center; color: var(--danger); margin-bottom: 15px; }
+        .badge { background: #e0e7ff; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 12px; }
+        .alert { padding: 10px; background: #fee2e2; color: #b91c1c; border-radius: 8px; margin-bottom: 15px; text-align: center; font-size: 14px; display: none; }
+        
+        .chat-container { margin-top: 20px; border-top: 2px dashed #cbd5e1; padding-top: 15px; }
+        .chat-messages { height: 120px; overflow-y: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; font-size: 14px; margin-bottom: 10px; }
+        .reactions-bar { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        .reaction-btn { background: #e2e8f0; border: none; border-radius: 50px; padding: 8px 14px; font-size: 18px; cursor: pointer; width: auto; margin: 0; }
+        .reaction-btn:hover { background: #cbd5e1; }
+        #floating-reactions { position: absolute; top: 10px; left: 20px; font-size: 28px; pointer-events: none; z-index: 100; }
+        .back-btn { background: #64748b; margin-top: 5px; }
+        .back-btn:hover { background: #475569; }
+        
+        .legendary-badge { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; padding: 12px; border-radius: 10px; text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 16px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+        .billionaire-status { background: #1e1b4b; color: #fbbf24; border: 2px solid #f59e0b; padding: 15px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 15px; box-shadow: 0 0 20px rgba(245, 158, 11, 0.4); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="floating-reactions"></div>
+    <div id="error-alert" class="alert"></div>
+
+    <!-- شاشة البداية -->
+    <div id="screen-home" class="screen active">
+        <h1>منصة المسابقات الذكية</h1>
+        <div id="legendary-banner" style="display: none;" class="legendary-badge">👑 مبروك! لقد وصلت إلى المليار نقطة وأنت بطل اللعبة الأسطوري القادم! 🚀</div>
+        
+        <div class="form-group">
+            <label>اسمك الكريم (محفوظ تلقائياً):</label>
+            <input type="text" id="player-name" placeholder="أدخل اسمك..." oninput="savePlayerName(this.value)">
+        </div>
+        
+        <div class="form-group" style="border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 15px;">
+            <label>الانضمام إلى غرفة برمز خاص:</label>
+            <div class="flex">
+                <input type="text" id="room-code-input" placeholder="أدخل رمز الغرفة...">
+                <button onclick="joinRoom()" style="width: 130px; margin:0;">انضمام</button>
+            </div>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button onclick="showPublicRooms()" style="background: #0284c7;">🌍 تصفح الغرف العامة المتاحة</button>
+            <button onclick="showCreateRoomOptions()" class="success">إنشاء غرفة جديدة 🎮</button>
+            <button onclick="restoreMyRoom()" style="background: #b45309;">🔄 استعادة غرفتي المحفوظة</button>
+            <button onclick="startSoloChallenge()" style="background: #d97706;">⚡ وضع التحدي الفردي (تدريبي بدون نقاط)</button>
+            <button onclick="showHistoryScreen()" style="background: #7c3aed;">📊 سجل النقاط التراكمي والدائم</button>
+        </div>
+    </div>
+
+    <!-- شاشة التحدي الفردي التدريبي -->
+    <div id="screen-solo" class="screen">
+        <h2>⚡ التحدي الفردي التدريبي (بدون نقاط)</h2>
+        <div id="solo-timer" class="timer-box">10</div>
+        <h3 id="solo-q-text">السؤال يظهر هنا...</h3>
+        <div id="solo-answers-container"></div>
+        <div id="solo-status" style="text-align: center; margin-top: 15px; font-weight: bold;"></div>
+        <button onclick="switchScreen('screen-home')" class="back-btn" style="margin-top: 20px;">إنهاء التحدي والرجوع 🏠</button>
+    </div>
+
+    <!-- شاشة سجل النقاط التراكمي -->
+    <div id="screen-history" class="screen">
+        <h2>📊 سجل النقاط والتاريخ التراكمي</h2>
+        <div id="billionaire-card" style="display: none;" class="billionaire-status">👑 بطل اللعبة الأسطوري القادم 👑</div>
+        <p style="text-align: center; color: #64748b; margin-bottom: 10px;">إجمالي نقاطك المحفوظة عبر كل المسابقات:</p>
+        <div id="total-score-display" style="text-align: center; font-size: 24px; font-weight: bold; color: var(--primary); margin-bottom: 15px;">0 نقطة</div>
+        <ul id="history-list" class="history-list"></ul>
+        <button onclick="switchScreen('screen-home')" class="back-btn">رجوع للرئيسية ⬅️</button>
+    </div>
+
+    <!-- شاشة إنشاء غرفة -->
+    <div id="screen-create-options" class="screen">
+        <h2>إنشاء غرفة جديدة</h2>
+        <div class="form-group">
+            <label>نوع الغرفة:</label>
+            <select id="room-type-select">
+                <option value="private">خاصة (برمز سري فقط)</option>
+                <option value="public">عامة (تظهر للجميع في القائمة)</option>
+            </select>
+        </div>
+        <button onclick="createRoom()" class="success">تأكيد وإنشاء الغرفة 🚀</button>
+        <button onclick="switchScreen('screen-home')" class="back-btn">رجوع ⬅️</button>
+    </div>
+
+    <!-- شاشة الغرف العامة -->
+    <div id="screen-public-rooms" class="screen">
+        <h2>الغرف العامة المتاحة</h2>
+        <ul id="public-rooms-list" class="public-rooms-list">
+            <li style="text-align: center; color: #64748b;">جاري البحث عن غرف متاحة...</li>
+        </ul>
+        <button onclick="switchScreen('screen-home')" class="back-btn">رجوع ⬅️</button>
+    </div>
+
+    <!-- شاشة الانتظار (اللوبي) -->
+    <div id="screen-lobby" class="screen">
+        <h2>غرفة الانتظار</h2>
+        <p>رمز الغرفة: <span id="display-room-code" class="badge" style="font-size: 18px;"></span></p>
+        <p style="margin-top: 15px; font-weight: 600;">اللاعبون المتواجدون:</p>
+        <ul id="players-list" class="player-list"></ul>
+        
+        <div id="host-controls" style="display: none; margin-top: 20px; border-top: 2px dashed #cbd5e1; padding-top: 15px;">
+            <h3>لوحة تحكم المضيف</h3>
+            <button onclick="showQuestionCreator()" class="success">طرح سؤال جديد</button>
+            <button onclick="endGameSession()" class="danger" style="background:#dc2626;">إنهاء اللعبة وإعلان الفائزين 🏆</button>
+            <button onclick="closeRoom()" class="danger" style="margin-top:5px;">إغلاق الغرفة نهائياً للأبد</button>
+        </div>
+        <div id="waiting-msg" style="text-align: center; margin-top: 20px; color: #64748b;">
+            بانتظار أن يقوم المضيف بطرح السؤال...
+        </div>
+
+        <div class="chat-container">
+            <div id="chat-messages" class="chat-messages"></div>
+            <div class="flex">
+                <input type="text" id="chat-input" placeholder="اكتب رسالة للجميع..." style="margin:0;">
+                <button onclick="sendChatMsg()" style="width: 80px; margin:0;">إرسال</button>
+            </div>
+            <div class="reactions-bar">
+                <button class="reaction-btn" onclick="sendEmoji('🔥')">🔥</button>
+                <button class="reaction-btn" onclick="sendEmoji('👏')">👏</button>
+                <button class="reaction-btn" onclick="sendEmoji('😂')">😂</button>
+                <button class="reaction-btn" onclick="sendEmoji('❤️')">❤️</button>
+            </div>
+        </div>
+        <button onclick="leaveRoom()" class="back-btn" style="margin-top: 15px;">خروج من الغرفة 🚪</button>
+    </div>
+
+    <!-- شاشة إنشاء السؤال (للمضيف) -->
+    <div id="screen-create-question" class="screen">
+        <h2>إعداد سؤال جديد</h2>
+        <p style="text-align: center; color: #10b981; font-weight: bold; margin-bottom: 10px;">⭐ النقاط ثابتة وتلقائية (15 نقطة كحد أقصى)</p>
+        
+        <div class="form-group">
+            <label>نوع السؤال:</label>
+            <select id="q-type" onchange="toggleQuestionType()">
+                <option value="mcq">اختيار من متعدد</option>
+                <option value="tf">صواب وخطأ (True / False)</option>
+                <option value="math_free">رياضيات حرة (مثل 25×25 أو ناتج)</option>
+                <option value="correct_error">صحح الخطأ (إن وجد)</option>
+                <option value="order">سؤال ترتيب</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>نص السؤال:</label>
+            <textarea id="q-text" rows="2" placeholder="اكتب نص السؤال أو العبارة هنا..."></textarea>
+        </div>
+        
+        <div id="mcq-options-container">
+            <div class="form-group"><label>الخيار أ:</label><input type="text" id="opt-0"></div>
+            <div class="form-group"><label>الخيار ب:</label><input type="text" id="opt-1"></div>
+            <div class="form-group"><label>الخيار ج:</label><input type="text" id="opt-2"></div>
+            <div class="form-group"><label>الخيار د:</label><input type="text" id="opt-3"></div>
+            <div class="form-group">
+                <label>رقم الإجابة الصحيحة:</label>
+                <select id="correct-opt-index">
+                    <option value="0">الخيار أ</option>
+                    <option value="1">الخيار ب</option>
+                    <option value="2">الخيار ج</option>
+                    <option value="3">الخيار د</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="tf-options-container" style="display: none;">
+            <div class="form-group">
+                <label>حدد الإجابة الصحيحة:</label>
+                <select id="correct-tf">
+                    <option value="true">صح (True)</option>
+                    <option value="false">خطأ (False)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="math-free-container" style="display: none;">
+            <div class="form-group">
+                <label>الناتج الصحيح أو الإجابة الرياضية:</label>
+                <input type="text" id="math-ans-input" placeholder="مثال: 625 أو x=5">
+            </div>
+        </div>
+
+        <div id="correct-error-container" style="display: none;">
+            <div class="form-group">
+                <label>ما هي الإجابة الصحيحة (أو اكتب "ليس هنالك خطأ"):</label>
+                <input type="text" id="error-ans-input" placeholder="التصحيح أو اكتب: ليس هنالك خطأ">
+            </div>
+        </div>
+
+        <div id="order-options-container" style="display: none;">
+            <div class="form-group"><label>الخطوة أو العنصر الأول (الصحيح):</label><input type="text" id="ord-0"></div>
+            <div class="form-group"><label>الخطوة أو العنصر الثاني:</label><input type="text" id="ord-1"></div>
+            <div class="form-group"><label>الخطوة أو العنصر الثالث:</label><input type="text" id="ord-2"></div>
+            <div class="form-group"><label>الخطوة أو العنصر الرابع:</label><input type="text" id="ord-3"></div>
+        </div>
+
+        <div class="form-group">
+            <label>الوقت المحدد للإجابة (بالثواني):</label>
+            <input type="number" id="q-time" value="15" min="5" max="60">
+        </div>
+
+        <button onclick="sendQuestion()" class="success">إرسال السؤال للجميع 🚀</button>
+        <button onclick="returnHostToLobby()" class="back-btn">رجوع للوبي ⬅️</button>
+    </div>
+
+    <!-- شاشة المضيف أثناء السؤال -->
+    <div id="screen-host-live" class="screen">
+        <h2>مراقبة إجابات اللاعبين 📊</h2>
+        <div id="host-timer" class="timer-box">15</div>
+        <p><b>السؤال الحالي:</b> <span id="host-current-q"></span></p>
+        <div style="margin-top: 15px;">
+            <h4>سجل الإجابات الفورية (الأسرع أولاً):</h4>
+            <ul id="host-live-log" class="player-list"></ul>
+        </div>
+        <button onclick="forceEndQuestion()" class="danger" style="background:#d97706; margin-top: 15px;">إنهاء السؤال واحتساب النقاط فوراً ⚡</button>
+        <button onclick="returnHostToLobby()" style="margin-top: 10px;" class="success">العودة للوبي وطرح سؤال آخر 🔄</button>
+    </div>
+
+    <!-- شاشة اللعب للطلاب -->
+    <div id="screen-game" class="screen">
+        <div id="timer" class="timer-box">15</div>
+        <h3 id="game-q-text">نص السؤال يظهر هنا...</h3>
+        
+        <div id="game-answers-container"></div>
+        <div id="answer-status" style="text-align: center; margin-top: 15px; font-weight: bold;"></div>
+
+        <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            <h4>لوحة النقاط المباشرة</h4>
+            <ul id="scoreboard-list" class="scoreboard-list"></ul>
+        </div>
+    </div>
+
+    <!-- شاشة التتويج النهائية -->
+    <div id="screen-game-over" class="screen">
+        <h2>🏆 منصة التتويج والنتائج النهائية 🏆</h2>
+        <div id="podium-container" style="margin-top: 20px;"></div>
+        <button onclick="location.reload()" class="success" style="margin-top: 25px;">العودة للرئيسية 🏠</button>
+    </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    let currentRoomCode = '';
+    let isHost = false;
+    let timerInterval = null;
+
+    window.onload = () => {
+        const savedName = localStorage.getItem('quiz_player_name');
+        if (savedName) {
+            document.getElementById('player-name').value = savedName;
+        }
+        checkBillionClub();
+    };
+
+    function savePlayerName(name) {
+        localStorage.setItem('quiz_player_name', name.trim());
+    }
+
+    function addScoreToHistory(points, quizName) {
+        let history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
+        history.push({ date: new Date().toLocaleDateString('ar-IQ'), points, quizName });
+        localStorage.setItem('quiz_history', JSON.stringify(history));
+
+        let total = parseInt(localStorage.getItem('quiz_total_score') || '0') + points;
+        localStorage.setItem('quiz_total_score', total);
+        checkBillionClub();
+    }
+
+    function checkBillionClub() {
+        const total = parseInt(localStorage.getItem('quiz_total_score') || '0');
+        if (total >= 1000000000) {
+            document.getElementById('legendary-banner').style.display = 'block';
+            document.getElementById('billionaire-card').style.display = 'block';
+        }
+    }
+
+    function showHistoryScreen() {
+        switchScreen('screen-history');
+        const total = localStorage.getItem('quiz_total_score') || '0';
+        document.getElementById('total-score-display').innerText = Number(total).toLocaleString() + ' نقطة';
+        checkBillionClub();
+        const list = document.getElementById('history-list');
+        const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
+        list.innerHTML = '';
+        if (history.length === 0) {
+            list.innerHTML = '<li style="text-align: center; color: #64748b;">لا توجد سجلات نقاط حتى الآن. العب وابدأ جمع النقاط!</li>';
+            return;
+        }
+        history.reverse().forEach(h => {
+            const li = document.createElement('li');
+            li.className = 'player-item';
+            li.innerHTML = `<span>مسابقة تاريخ: ${h.date} (${h.quizName})</span> <b style="color:var(--success);">+${h.points} نقطة</b>`;
+            list.appendChild(li);
+        });
+    }
+
+    // التحدي الفردي التدريبي (بدون نقاط)
+    const soloQuestions = [
+        { q: "ما هو الناتج الرياضي لـ 25 × 25 ؟", opts: ["625", "525", "650", "600"], correct: 0 },
+        { q: "صحح الخطأ إن وجد: مجموع زاويتي المثلث القائم الزاوية الحادتين يساوي 90 درجة.", opts: ["ليس هنالك خطأ", "يساوي 180 درجة", "يساوي 45 درجة"], correct: 0 },
+        { q: "ما عاصمة دولة العراق؟", opts: ["البصرة", "أربيل", "بغداد", "الموصل"], correct: 2 }
+    ];
+    let soloTimerInterval = null;
+
+    function startSoloChallenge() {
+        const playerName = document.getElementById('player-name').value.trim();
+        if (!playerName) return showError('يرجى إدخال اسمك أولاً!');
+        savePlayerName(playerName);
+        switchScreen('screen-solo');
+        loadNextSoloQuestion();
+    }
+
+    function loadNextSoloQuestion() {
+        const randQ = soloQuestions[Math.floor(Math.random() * soloQuestions.length)];
+        document.getElementById('solo-q-text').innerText = randQ.q;
+        document.getElementById('solo-status').innerText = '';
+        const container = document.getElementById('solo-answers-container');
+        container.innerHTML = '';
+
+        randQ.opts.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.innerText = opt;
+            btn.style.margin = '8px 0';
+            btn.onclick = () => {
+                clearInterval(soloTimerInterval);
+                if (idx === randQ.correct) {
+                    playSound('correct');
+                    document.getElementById('solo-status').innerText = 'إجابة صحيحة! 🎉 (تدريبي بدون نقاط)';
+                    document.getElementById('solo-status').style.color = 'var(--success)';
+                } else {
+                    playSound('wrong');
+                    document.getElementById('solo-status').innerText = 'إجابة خاطئة! ❌';
+                    document.getElementById('solo-status').style.color = 'var(--danger)';
+                }
+                setTimeout(loadNextSoloQuestion, 2000);
+            };
+            container.appendChild(btn);
+        });
+
+        let timeLeft = 10;
+        const timerBox = document.getElementById('solo-timer');
+        timerBox.innerText = timeLeft;
+        if (soloTimerInterval) clearInterval(soloTimerInterval);
+        soloTimerInterval = setInterval(() => {
+            timeLeft--;
+            timerBox.innerText = timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(soloTimerInterval);
+                document.getElementById('solo-status').innerText = 'انتهى الوقت! ⏰';
+                document.getElementById('solo-status').style.color = 'var(--danger)';
+                setTimeout(loadNextSoloQuestion, 2000);
+            }
+        }, 1000);
+    }
+
+    function restoreMyRoom() {
+        const playerName = document.getElementById('player-name').value.trim();
+        const roomCode = prompt("أدخل رمز غرفتك القديمة للاستعادة:");
+        if (!playerName || !roomCode) return showError('يرجى إدخال اسمك ورمز الغرفة!');
+        savePlayerName(playerName);
+        currentRoomCode = roomCode;
+        isHost = true;
+        socket.emit('restore-host-room', { roomCode, hostName: playerName });
+    }
+
+    socket.on('room-restored', (room) => {
+        setupLobby(room);
+    });
+
+    function playSound(type) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            if (type === 'correct') {
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } else {
+                osc.frequency.setValueAtTime(150, ctx.currentTime);
+                osc.frequency.setValueAtTime(100, ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            }
+        } catch(e) {}
+    }
+
+    function triggerConfetti() {
+        try {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        } catch(e) {}
+    }
+
+    function showError(msg) {
+        const errBox = document.getElementById('error-alert');
+        errBox.innerText = msg;
+        errBox.style.display = 'block';
+        setTimeout(() => { errBox.style.display = 'none'; }, 4000);
+    }
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function showCreateRoomOptions() {
+        const playerName = document.getElementById('player-name').value.trim();
+        if (!playerName) return showError('يرجى إدخال اسمك أولاً!');
+        savePlayerName(playerName);
+        switchScreen('screen-create-options');
+    }
+
+    function createRoom() {
+        const playerName = document.getElementById('player-name').value.trim();
+        const roomType = document.getElementById('room-type-select').value;
+        const roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+        currentRoomCode = roomCode;
+        isHost = true;
+        socket.emit('create-room', { playerName, roomCode, isPublic: roomType === 'public' });
+    }
+
+    function showPublicRooms() {
+        const playerName = document.getElementById('player-name').value.trim();
+        if (!playerName) return showError('يرجى إدخال اسمك أولاً!');
+        savePlayerName(playerName);
+        switchScreen('screen-public-rooms');
+        socket.emit('get-public-rooms');
+    }
+
+    socket.on('public-rooms-list', (rooms) => {
+        const list = document.getElementById('public-rooms-list');
+        list.innerHTML = '';
+        if (rooms.length === 0) {
+            list.innerHTML = '<li style="text-align: center; color: #64748b;">لا توجد غرف عامة متاحة. أنشئ غرفة جديدة!</li>';
+            return;
+        }
+        rooms.forEach(r => {
+            const li = document.createElement('li');
+            li.className = 'player-item';
+            li.innerHTML = `<span>غرفة المضيف: <b>${r.hostName}</b> (الرمز: ${r.code})</span> <button onclick="joinPublicRoom('${r.code}')" style="width:auto; padding:6px 12px; margin:0;" class="success">دخول</button>`;
+            list.appendChild(li);
+        });
+    });
+
+    function joinPublicRoom(code) {
+        const playerName = document.getElementById('player-name').value.trim();
+        savePlayerName(playerName);
+        currentRoomCode = code;
+        isHost = false;
+        socket.emit('join-room', { playerName, roomCode: code });
+    }
+
+    function joinRoom() {
+        const playerName = document.getElementById('player-name').value.trim();
+        const roomCode = document.getElementById('room-code-input').value.trim();
+        if (!playerName || !roomCode) return showError('يرجى إدخال الاسم ورمز الغرفة!');
+        savePlayerName(playerName);
+        currentRoomCode = roomCode;
+        isHost = false;
+        socket.emit('join-room', { playerName, roomCode });
+    }
+
+    socket.on('room-created', (room) => setupLobby(room));
+    socket.on('joined-success', (room) => setupLobby(room));
+    socket.on('update-room', (room) => setupLobby(room));
+
+    function setupLobby(room) {
+        switchScreen('screen-lobby');
+        document.getElementById('display-room-code').innerText = room.code;
+        const list = document.getElementById('players-list');
+        list.innerHTML = '';
+        
+        room.players.forEach(p => {
+            const li = document.createElement('li');
+            li.className = 'player-item';
+            li.innerHTML = `<span>${p.name} ${p.id === room.hostId ? '👑 (المضيف)' : ''}</span>`;
+            if (isHost && p.id !== socket.id) {
+                const kickBtn = document.createElement('button');
+                kickBtn.innerText = 'حظر وطرد 🚫';
+                kickBtn.className = 'danger';
+                kickBtn.style.padding = '4px 8px';
+                kickBtn.style.width = 'auto';
+                kickBtn.style.marginTop = '0';
+                kickBtn.onclick = () => socket.emit('kick-player', { roomCode: currentRoomCode, targetId: p.id });
+                li.appendChild(kickBtn);
+            }
+            list.appendChild(li);
+        });
+
+        if (isHost) {
+            document.getElementById('host-controls').style.display = 'block';
+            document.getElementById('waiting-msg').style.display = 'none';
+        } else {
+            document.getElementById('host-controls').style.display = 'none';
+            document.getElementById('waiting-msg').style.display = 'block';
+        }
+    }
+
+    function showQuestionCreator() { switchScreen('screen-create-question'); }
+
+    function toggleQuestionType() {
+        const type = document.getElementById('q-type').value;
+        document.getElementById('mcq-options-container').style.display = type === 'mcq' ? 'block' : 'none';
+        document.getElementById('tf-options-container').style.display = type === 'tf' ? 'block' : 'none';
+        document.getElementById('math-free-container').style.display = type === 'math_free' ? 'block' : 'none';
+        document.getElementById('correct-error-container').style.display = type === 'correct_error' ? 'block' : 'none';
+        document.getElementById('order-options-container').style.display = type === 'order' ? 'block' : 'none';
+    }
+
+    function sendQuestion() {
+        const type = document.getElementById('q-type').value;
+        const questionText = document.getElementById('q-text').value.trim();
+        const timeLimit = parseInt(document.getElementById('q-time').value) || 15;
+        if (!questionText) return showError('يرجى كتابة نص السؤال!');
+
+        let questionData = { type, questionText, timeLimit };
+        
+        if (type === 'mcq') {
+            const options = [
+                document.getElementById('opt-0').value.trim(),
+                document.getElementById('opt-1').value.trim(),
+                document.getElementById('opt-2').value.trim(),
+                document.getElementById('opt-3').value.trim()
+            ];
+            if (options.some(o => !o)) return showError('يرجى ملء جميع الخيارات الأربعة!');
+            questionData.options = options;
+            questionData.correctAnswer = document.getElementById('correct-opt-index').value;
+        } else if (type === 'tf') {
+            questionData.options = ['صح (True)', 'خطأ (False)'];
+            questionData.correctAnswer = document.getElementById('correct-tf').value;
+        } else if (type === 'math_free') {
+            const ans = document.getElementById('math-ans-input').value.trim();
+            if (!ans) return showError('يرجى إدخال الإجابة الرياضية الصحيحة!');
+            questionData.correctAnswer = ans;
+        } else if (type === 'correct_error') {
+            const ans = document.getElementById('error-ans-input').value.trim();
+            if (!ans) return showError('يرجى إدخال التصحيح أو كتابة "ليس هنالك خطأ"!');
+            questionData.correctAnswer = ans;
+        } else if (type === 'order') {
+            const options = [
+                document.getElementById('ord-0').value.trim(),
+                document.getElementById('ord-1').value.trim(),
+                document.getElementById('ord-2').value.trim(),
+                document.getElementById('ord-3').value.trim()
+            ];
+            if (options.some(o => !o)) return showError('يرجى ملء خطوات الترتيب الأربعة!');
+            questionData.options = [...options].sort(() => Math.random() - 0.5);
+            questionData.correctAnswer = options;
+        }
+
+        socket.emit('send-question', { roomCode: currentRoomCode, questionData });
+    }
+
+    socket.on('host-question-started', (q) => {
+        switchScreen('screen-host-live');
+        document.getElementById('host-current-q').innerText = q.questionText;
+        document.getElementById('host-live-log').innerHTML = '<li>بانتظار إجابات اللاعبين...</li>';
+        startHostTimer(q.timeLimit);
+    });
+
+    socket.on('update-answers-log', (log) => {
+        const logList = document.getElementById('host-live-log');
+        logList.innerHTML = '';
+        log.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = 'player-item';
+            li.innerHTML = `<span><b>#${index+1} ${item.playerName}</b> (${item.isCorrect ? '✅ صحيحة' : '❌ خاطئة'}) - الوقت: ${item.timeTaken} ثانية</span> <b>+${item.points} نقطة</b>`;
+            logList.appendChild(li);
+        });
+    });
+
+    socket.on('new-question', (q) => {
+        if (isHost) return;
+        switchScreen('screen-game');
+        document.getElementById('game-q-text').innerText = q.questionText;
+        document.getElementById('answer-status').innerText = '';
+        const ansContainer = document.getElementById('game-answers-container');
+        ansContainer.innerHTML = '';
+
+        if (q.type === 'mcq' || q.type === 'tf') {
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.innerText = opt;
+                btn.style.margin = '8px 0';
+                const ansValue = q.type === 'tf' ? (index === 0 ? 'true' : 'false') : index;
+                btn.onclick = () => submitAnswer(ansValue);
+                ansContainer.appendChild(btn);
+            });
+        } else if (q.type === 'math_free' || q.type === 'correct_error') {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div class="form-group" style="margin-top:10px;">
+                    <input type="text" id="free-user-ans" placeholder="اكتب إجابتك أو تصحيحك هنا...">
+                </div>
+                <button onclick="submitFreeAnswer()" class="success">إرسال الإجابة</button>
+            `;
+            ansContainer.appendChild(div);
+        } else if (q.type === 'order') {
+            let selectedOrder = [];
+            const info = document.createElement('p');
+            info.innerText = 'انقر على العناصر بالترتيب الصحيح:';
+            info.style.marginBottom = '10px';
+            info.style.fontWeight = 'bold';
+            ansContainer.appendChild(info);
+
+            q.options.forEach((opt) => {
+                const btn = document.createElement('button');
+                btn.innerText = opt;
+                btn.style.margin = '6px 0';
+                btn.onclick = () => {
+                    if (!selectedOrder.includes(opt)) {
+                        selectedOrder.push(opt);
+                        btn.style.background = '#10b981';
+                        btn.disabled = true;
+                        if (selectedOrder.length === q.options.length) {
+                            submitAnswer(selectedOrder);
+                        }
+                    }
+                };
+                ansContainer.appendChild(btn);
+            });
+        }
+        startTimer(q.timeLimit);
+    });
+
+    function submitAnswer(ans) {
+        socket.emit('submit-answer', { roomCode: currentRoomCode, answer: ans });
+        disableAnswers();
+    }
+
+    function submitFreeAnswer() {
+        const val = document.getElementById('free-user-ans').value.trim();
+        if(!val) return;
+        socket.emit('submit-answer', { roomCode: currentRoomCode, answer: val });
+        disableAnswers();
+    }
+
+    function disableAnswers() {
+        const btns = document.querySelectorAll('#game-answers-container button');
+        btns.forEach(b => b.disabled = true);
+        const inp = document.getElementById('free-user-ans');
+        if(inp) inp.disabled = true;
+        document.getElementById('answer-status').innerText = 'تم إرسال إجابتك، بانتظار النتائج...';
+        document.getElementById('answer-status').style.color = 'var(--primary)';
+    }
+
+    function startTimer(seconds) {
+        if (timerInterval) clearInterval(timerInterval);
+        let timeLeft = seconds;
+        const timerBox = document.getElementById('timer');
+        timerBox.innerText = timeLeft;
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerBox.innerText = timeLeft;
+            if (timeLeft <= 0) clearInterval(timerInterval);
+        }, 1000);
+    }
+
+    function startHostTimer(seconds) {
+        if (timerInterval) clearInterval(timerInterval);
+        let timeLeft = seconds;
+        const timerBox = document.getElementById('host-timer');
+        timerBox.innerText = timeLeft;
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerBox.innerText = timeLeft;
+            if (timeLeft <= 0) clearInterval(timerInterval);
+        }, 1000);
+    }
+
+    function forceEndQuestion() {
+        socket.emit('force-end-question', { roomCode: currentRoomCode });
+    }
+
+    function returnHostToLobby() {
+        socket.emit('return-to-lobby', { roomCode: currentRoomCode });
+    }
+
+    socket.on('back-to-lobby', (room) => {
+        if (timerInterval) clearInterval(timerInterval);
+        switchScreen('screen-lobby');
+        setupLobby(room);
+    });
+
+    socket.on('answer-result', (res) => {
+        const status = document.getElementById('answer-status');
+        if (res.correct) {
+            playSound('correct');
+            status.innerHTML = `إجابة صحيحة! 🎉 (+${res.points} نقطة)`;
+            status.style.color = 'var(--success)';
+            addScoreToHistory(res.points, 'سؤال مسابقة');
+        } else {
+            playSound('wrong');
+            status.innerHTML = `إجابة خاطئة! ❌`;
+            status.style.color = 'var(--danger)';
+        }
+    });
+
+    socket.on('time-up', (data) => {
+        if (timerInterval) clearInterval(timerInterval);
+        const status = document.getElementById('answer-status');
+        if(status) {
+            status.innerHTML += `<br><b>انتهى الوقت!</b> الإجابة الصحيحة: <span style="color:var(--primary);">${data.correctAnswer}</span>`;
+        }
+    });
+
+    socket.on('update-scores', (players) => {
+        const sbList = document.getElementById('scoreboard-list');
+        if(!sbList) return;
+        sbList.innerHTML = '';
+        players.sort((a, b) => b.score - a.score).forEach(p => {
+            const li = document.createElement('li');
+            li.className = 'player-item';
+            li.innerHTML = `<span>${p.name}</span> <b>${p.score} نقطة</b>`;
+            sbList.appendChild(li);
+        });
+    });
+
+    function sendChatMsg() {
+        const input = document.getElementById('chat-input');
+        const msg = input.value.trim();
+        if(!msg) return;
+        const playerName = document.getElementById('player-name').value.trim();
+        socket.emit('send-chat', { roomCode: currentRoomCode, sender: playerName, message: msg });
+        input.value = '';
+    }
+
+    function sendEmoji(emoji) {
+        socket.emit('send-reaction', { roomCode: currentRoomCode, emoji });
+    }
+
+    socket.on('receive-chat', (data) => {
+        const chatBox = document.getElementById('chat-messages');
+        chatBox.innerHTML += `<div><b>${data.sender}:</b> ${data.message}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    socket.on('receive-reaction', (emoji) => {
+        const floatBox = document.getElementById('floating-reactions');
+        const span = document.createElement('div');
+        span.innerText = emoji;
+        span.style.position = 'absolute';
+        span.style.left = Math.random() * 80 + '%';
+        span.style.transition = 'all 2s ease-out';
+        floatBox.appendChild(span);
+        setTimeout(() => { span.style.transform = 'translateY(-150px) scale(1.5)'; span.style.opacity = '0'; }, 50);
+        setTimeout(() => { span.remove(); }, 2000);
+    });
+
+    socket.on('error-msg', (msg) => {
+        showError(msg);
+    });
+
+    function endGameSession() {
+        socket.emit('end-game', { roomCode: currentRoomCode });
+    }
+
+    socket.on('game-over', (players) => {
+        switchScreen('screen-game-over');
+        triggerConfetti();
+        const podium = document.getElementById('podium-container');
+        podium.innerHTML = '';
+        players.forEach((p, idx) => {
+            const rankEmoji = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : '🏅'));
+            const div = document.createElement('div');
+            div.className = 'player-item';
+            div.style.fontSize = '18px';
+            div.style.margin = '8px 0';
+            div.innerHTML = `<span><b>${rankEmoji} المركز ${idx+1}:</b> ${p.name}</span> <b>${p.score} نقطة</b>`;
+            podium.appendChild(div);
+        });
+    });
+
+    function leaveRoom() { location.reload(); }
+    function closeRoom() { socket.emit('close-room', { roomCode: currentRoomCode }); }
+
+    socket.on('kicked', () => { alert('تم طردك وحظرك من الغرفة بواسطة المضيف.'); location.reload(); });
+    socket.on('room-closed', () => { alert('تم إغلاق الغرفة من قبل المضيف للأبد.'); location.reload(); });
+</script>
+
+</body>
+</html>
