@@ -1,5 +1,5 @@
 const express = require('express');
-const http = http = require('http');
+const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -171,7 +171,6 @@ io.on('connection', (socket) => {
 
         if (room.timer) clearTimeout(room.timer);
         
-        // إذا كان الخيار "بدون وقت" مفعل، لا نضع مؤقت إنهاء تلقائي
         if (!questionData.noTimer) {
             room.timer = setTimeout(() => {
                 triggerTimeUp(roomCode);
@@ -212,7 +211,6 @@ io.on('connection', (socket) => {
         } else if (q.type === 'order') {
             isCorrect = JSON.stringify(answer) === JSON.stringify(q.correctAnswer);
         } else {
-            // استخدام المقارنة الذكية لأسئلة الإعراب والصياغة الحرة وتصحيح الخطأ
             isCorrect = checkSmartAnswer(answer, q.correctAnswer, q.type);
         }
 
